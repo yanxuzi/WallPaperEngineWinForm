@@ -2,8 +2,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Newtonsoft.Json;
 using WallPaperEngineWinForm.Dtos;
 
 namespace WallPaperEngineWinForm
@@ -15,35 +17,46 @@ namespace WallPaperEngineWinForm
             InitializeComponent();
         }
 
+        /// <summary>
+        /// 存储目录选择
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void btnSelectFolderPath_Click(object sender, EventArgs e)
         {
             var folderBrowserDialog = new FolderBrowserDialog();
+            if (folderBrowserDialog.ShowDialog() != DialogResult.OK)
+                return;
 
-            if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
-            {
-                var path = folderBrowserDialog.SelectedPath;
-                txtSelectFolderPath.Text = path;
-            }
+            var path = folderBrowserDialog.SelectedPath;
+            txtSelectFolderPath.Text = path;
         }
 
-
-        public async Task GetWallPaperAsync(string path, int pg)
+        /// <summary>
+        /// 获取图片Url 默认查询10条
+        /// </summary>
+        /// <param name="pg"></param>
+        private async Task GetWallPaperAsync(int pg)
         {
-            if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(path);
-            }
-
             const string category = "ls";
             var url = $"https://juehackr.net/bizhis/index/views/t/{category}/cc/6.html?isget=1&pg={pg}";
 
             var result = await url.GetJsonAsync<IList<WallPaperDto>>();
-            foreach (var item in result)
+            await DownLoadAsync(result);
+        }
+
+        /// <summary>
+        /// 下载到本地
+        /// </summary>
+        /// <param name="input"></param>
+        private async Task DownLoadAsync(IEnumerable<WallPaperDto> input)
+        {
+            foreach (var item in input)
             {
                 var file = new FileInfo(item.url);
                 var suffix = file.Extension;
 
-                var localPictureName = Path.Combine(path, $"{item.tag.Replace(",", "")}{suffix}");
+                var localPictureName = Path.Combine(txtSelectFolderPath.Text, $"{item.tag.Replace(",", "")}{suffix}");
                 var stream = await item.url.GetStreamAsync();
 
                 using var fileStream = new FileStream(localPictureName, FileMode.Create);
@@ -52,42 +65,33 @@ namespace WallPaperEngineWinForm
             }
         }
 
+        /// <summary>
+        /// 任务开始
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private async void btnStart_Click(object sender, EventArgs e)
         {
             var taskFactory = new TaskFactory();
-            await taskFactory.StartNew(async () =>
-            {
-                await GetWallPaperAsync(txtSelectFolderPath.Text, Convert.ToInt32(txtCount.Text));
-            });
+            await taskFactory.StartNew(async () => { await GetWallPaperAsync(Convert.ToInt32(txtCount.Text)); });
         }
 
+        /// <summary>
+        /// 窗体初始化
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void Form1_Load(object sender, EventArgs e)
         {
-            var categoryDtos = new List<CategoryDto>
-            {
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "首页"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "最新"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "4k",
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "小清新"
-                }
-            };
+            const string path = @"C:\Users\奉仙\source\repos\WallPaperEngineWinForm\DataFiles";
+            const string fileName = "FirstType.json";
+            var directory = Path.Combine(path, fileName);
 
-            cmbType.DataSource = categoryDtos;
+            using var streamReader = new StreamReader(directory);
+            var jsonStr = streamReader.ReadToEnd();
+            var categoryData = JsonConvert.DeserializeObject<List<CategoryDto>>(jsonStr);
+
+            cmbType.DataSource = categoryData;
             cmbType.DisplayMember = "Text";
             cmbType.ValueMember = "TypeCode";
         }
@@ -99,53 +103,26 @@ namespace WallPaperEngineWinForm
                 return;
             }
 
-            var categoryDtos = new List<CategoryDto>
-            {
-                new CategoryDto
+            const string path = @"C:\Users\奉仙\source\repos\WallPaperEngineWinForm\DataFiles";
+            const string fileName = "Type.json";
+            var directory = Path.Combine(path, fileName);
+
+            using var streamReader = new StreamReader(directory);
+            var jsonStr = streamReader.ReadToEnd();
+            var categoryData = JsonConvert.DeserializeObject<List<CategoryDto>>(jsonStr)
+                .Where(x => x.ParentId == cmbType.SelectedIndex + 1)
+                .Select(t => new CategoryDto()
                 {
-                    Id = 1,
-                    Text = "护眼壁纸"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "舒缓压力"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "温馨一刻",
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "清新淡雅"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "静物写真"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "鸟语花香"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "动感水果"
-                },
-                new CategoryDto
-                {
-                    Id = 1,
-                    Text = "娇艳欲滴"
-                }
-            };
+                    Text = t.Text,
+                    Id = t.Id,
+                    ParentId = t.ParentId,
+                    TypeCode = t.TypeCode
+                }).ToList();
+
 
             if (cmbType.SelectedIndex == 3)
             {
-                cmbType2.DataSource = categoryDtos;
+                cmbType2.DataSource = categoryData;
                 cmbType2.DisplayMember = "Text";
                 cmbType2.ValueMember = "TypeCode";
             }
