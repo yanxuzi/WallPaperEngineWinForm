@@ -83,9 +83,8 @@ namespace WallPaperEngineWinForm
         /// <param name="e"></param>
         private void Form1_Load(object sender, EventArgs e)
         {
-            const string path = @"C:\Users\奉仙\source\repos\WallPaperEngineWinForm\DataFiles";
-            const string fileName = "FirstType.json";
-            var directory = Path.Combine(path, fileName);
+            var path = Environment.CurrentDirectory;
+            var directory = Path.Combine(path, "DataFiles", "FirstType.json");
 
             using var streamReader = new StreamReader(directory);
             var jsonStr = streamReader.ReadToEnd();
@@ -96,6 +95,7 @@ namespace WallPaperEngineWinForm
             cmbType.ValueMember = "TypeCode";
         }
 
+
         private void cmbType_SelectedIndexChanged(object sender, EventArgs e)
         {
             if (cmbType.SelectedIndex == 0)
@@ -103,9 +103,12 @@ namespace WallPaperEngineWinForm
                 return;
             }
 
-            const string path = @"C:\Users\奉仙\source\repos\WallPaperEngineWinForm\DataFiles";
-            const string fileName = "Type.json";
-            var directory = Path.Combine(path, fileName);
+            //const string path = @"C:\Users\奉仙\source\repos\WallPaperEngineWinForm\DataFiles";
+            //const string fileName = "Type.json";
+            //var directory = Path.Combine(path, fileName);
+
+            var path = Environment.CurrentDirectory;
+            var directory = Path.Combine(path, "DataFiles", "Type.json");
 
             using var streamReader = new StreamReader(directory);
             var jsonStr = streamReader.ReadToEnd();
